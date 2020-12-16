@@ -39,14 +39,15 @@ def score_tokens(*, hparams, tokens):
 
     return ln_probs_next
 
-def score_texts(model_name, texts, models_dir='models'):
+def score_texts(*, model_name, texts, exclude_end, models_dir='models'):
     models_dir = os.path.expanduser(os.path.expandvars(models_dir))
     enc = encoder.get_encoder(model_name, models_dir)
     hparams = model.default_hparams()
     with open(os.path.join(models_dir, model_name, 'hparams.json')) as f:
         hparams.override_from_dict(json.load(f))
 
-    start_token = enc.encoder['<|endoftext|>']
+    end_token = enc.encoder['<|endoftext|>']
+    start_token = end_token # it does double duty
 
     with tf.Session(graph=tf.Graph()) as sess:
         tokens_tensor = tf.placeholder(tf.int32, [None])
@@ -60,6 +61,8 @@ def score_texts(model_name, texts, models_dir='models'):
         for text in texts:
             # prepend the start token so that we get a probability for the first "real" token
             tokens = enc.encode(text)
+            if not exclude_end:
+                tokens += [end_token]
             tokens_with_start = [start_token] + tokens
 
             logprobs = sess.run(output, feed_dict={
@@ -69,7 +72,7 @@ def score_texts(model_name, texts, models_dir='models'):
             logprobs_list = logprobs.tolist()
             assert len(logprobs_list) == len(tokens) # sanity check
 
-            print(text)
+            print('%s\t%.5g' % (text, sum(logprobs_list)))
             for t, lp in zip(tokens, logprobs_list):
                 print('%s\t%.5g' % (enc.decoder[t], lp))
             print()
@@ -78,6 +81,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file')
     parser.add_argument('--model', default='124M')
+    parser.add_argument('--exclude-end', action='store_true')
     args = parser.parse_args()
 
     if args.input_file == '-':
@@ -92,4 +96,4 @@ if __name__ == '__main__':
             continue
         texts.append(sline)
 
-    score_texts(args.model, texts)
+    score_texts(model_name=args.model, texts=texts, exclude_end=args.exclude_end)
