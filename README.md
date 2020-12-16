@@ -1,3 +1,9 @@
+## rsimmons fork
+
+I forked this to add [some code](./src/score.py) to score sentences using their token probabilities, a la the [lm-scorer](https://github.com/simonepri/lm-scorer) package but in TensorFlow.
+
+---
+
 **Status:** Archive (code is provided as-is, no updates expected)
 
 # gpt-2
